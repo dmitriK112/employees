@@ -1,9 +1,13 @@
 package com.example.employeees.controller;
 
 import com.example.employeees.entity.Employee;
+import com.example.employeees.response.ResponseFactory;
+import com.example.employeees.response.ResponseWrapper;
 import com.example.employeees.service.EmployeeService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -13,47 +17,42 @@ import java.util.List;
 @RequestMapping("/api")
 class EmployeeRestController {
     private final EmployeeService employeeService;
+    private final ResponseFactory responseFactory;
 
     @Autowired
-    public EmployeeRestController(EmployeeService employeeService) {
+    public EmployeeRestController(EmployeeService employeeService, ResponseFactory responseFactory) {
         this.employeeService = employeeService;
+        this.responseFactory = responseFactory;
     }
 
     @GetMapping("/employees")
-    public List<Employee> findAll() {
-        return employeeService.findAll();
+    public ResponseEntity<ResponseWrapper<List<Employee>>> findAll() {
+        return responseFactory.ok("List of employees", employeeService.findAll());
     }
 
     @GetMapping("/employees/{id}")
-    public Employee findById(@PathVariable int id) {
-        checkEmployeeExists(id);
-        return employeeService.findById(id);
+    public ResponseEntity<ResponseWrapper<Employee>> findById(@PathVariable int id) {
+        return responseFactory.ok("The employee", employeeService.findById(id));
     }
 
     @PutMapping("/employees/{id}")
-    public Employee update(@PathVariable int id, @RequestBody Employee e) {
-        checkEmployeeExists(id);
+    public ResponseEntity<ResponseWrapper<Employee>> update(@PathVariable int id, @Valid @RequestBody Employee e) {
+        employeeService.findById(id);
         e.setId(id);
-        return employeeService.save(e);
+        Employee updatedEmployee = employeeService.save(e);
+        return responseFactory.ok("The employee was updated", updatedEmployee);
     }
 
     @PostMapping("/employees")
-    public Employee save(@RequestBody Employee e) {
+    public ResponseEntity<ResponseWrapper<Employee>> save(@Valid @RequestBody Employee e) {
         e.setId(null);
-        return employeeService.save(e);
+        return responseFactory.created("The employee was created", employeeService.save(e));
     }
 
     @DeleteMapping("/employees/{id}")
-    public String delete(@PathVariable int id) {
-        checkEmployeeExists(id);
+    public ResponseEntity<ResponseWrapper<Integer>> delete(@PathVariable int id) {
         employeeService.deleteById(id);
-        return "Deleted employee id - " + id;
+        return responseFactory.ok("The employee was deleted", id);
     }
 
-    private void checkEmployeeExists(int id) {
-        if(employeeService.findById(id) == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                    "Employee with id " + id + " not found");
-        }
-    }
 }
